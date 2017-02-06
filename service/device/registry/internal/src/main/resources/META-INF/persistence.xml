@@ -30,6 +30,8 @@
 
         <properties>
             <property name="javax.persistence.lock.timeout" value="1000" />
+            <!-- <property name="eclipselink.logging.level.sql" value="FINE"/>
+            <property name="eclipselink.logging.parameters" value="true"/> -->
         </properties>
     </persistence-unit>
 </persistence>
