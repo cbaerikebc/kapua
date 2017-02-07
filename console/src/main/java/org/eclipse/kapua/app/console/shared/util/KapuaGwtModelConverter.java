@@ -28,15 +28,10 @@ import org.eclipse.kapua.app.console.shared.model.GwtUser;
 import org.eclipse.kapua.app.console.shared.model.account.GwtAccount;
 import org.eclipse.kapua.app.console.shared.model.authorization.GwtRole;
 import org.eclipse.kapua.app.console.shared.model.authorization.GwtRolePermission;
-import org.eclipse.kapua.commons.model.query.predicate.AndPredicate;
-import org.eclipse.kapua.commons.model.query.predicate.AttributePredicate;
 import org.eclipse.kapua.commons.util.SystemUtils;
-import org.eclipse.kapua.locator.KapuaLocator;
 import org.eclipse.kapua.model.KapuaEntity;
 import org.eclipse.kapua.model.KapuaUpdatableEntity;
 import org.eclipse.kapua.model.id.KapuaId;
-import org.eclipse.kapua.model.query.KapuaListResult;
-import org.eclipse.kapua.model.query.predicate.KapuaAndPredicate;
 import org.eclipse.kapua.service.account.Account;
 import org.eclipse.kapua.service.account.Organization;
 import org.eclipse.kapua.service.account.internal.AccountDomain;
@@ -47,10 +42,6 @@ import org.eclipse.kapua.service.authorization.role.Role;
 import org.eclipse.kapua.service.authorization.role.RolePermission;
 import org.eclipse.kapua.service.device.registry.Device;
 import org.eclipse.kapua.service.device.registry.connection.DeviceConnection;
-import org.eclipse.kapua.service.device.registry.connection.DeviceConnectionFactory;
-import org.eclipse.kapua.service.device.registry.connection.DeviceConnectionPredicates;
-import org.eclipse.kapua.service.device.registry.connection.DeviceConnectionQuery;
-import org.eclipse.kapua.service.device.registry.connection.DeviceConnectionService;
 import org.eclipse.kapua.service.device.registry.event.DeviceEvent;
 import org.eclipse.kapua.service.user.User;
 
@@ -308,9 +299,10 @@ public class KapuaGwtModelConverter {
 
     public static GwtDevice convert(Device device)
             throws KapuaException {
+
         GwtDevice gwtDevice = new GwtDevice();
-        gwtDevice.setId(device.getId().toCompactId());
-        gwtDevice.setScopeId(device.getScopeId().toCompactId());
+        gwtDevice.setId(convert(device.getId()));
+        gwtDevice.setScopeId(convert(device.getScopeId()));
         gwtDevice.setGwtDeviceStatus(device.getStatus().toString());
         gwtDevice.setClientId(device.getClientId());
         gwtDevice.setDisplayName(device.getDisplayName());
@@ -324,40 +316,29 @@ public class KapuaGwtModelConverter {
         gwtDevice.setAcceptEncoding(device.getAcceptEncoding());
         gwtDevice.setApplicationIdentifiers(device.getApplicationIdentifiers());
         gwtDevice.setLastEventOn(device.getLastEvent().getReceivedOn());
-
+        gwtDevice.setIotFrameworkVersion(device.getApplicationFrameworkVersion());
         gwtDevice.setIccid(device.getIccid());
         gwtDevice.setImei(device.getImei());
         gwtDevice.setImsi(device.getImsi());
-
-        String lastEventType = device.getLastEvent() != null ? device.getLastEvent().getType() : "";
-        gwtDevice.setLastEventType(lastEventType);
-
-        // custom Attributes
         gwtDevice.setCustomAttribute1(device.getCustomAttribute1());
         gwtDevice.setCustomAttribute2(device.getCustomAttribute2());
         gwtDevice.setCustomAttribute3(device.getCustomAttribute3());
         gwtDevice.setCustomAttribute4(device.getCustomAttribute4());
         gwtDevice.setCustomAttribute5(device.getCustomAttribute5());
-
         gwtDevice.setOptlock(device.getOptlock());
 
+        // Last device event
+        if (device.getLastEvent() != null) {
+            DeviceEvent lastEvent = device.getLastEvent();
+
+            gwtDevice.setLastEventType(lastEvent.getType());
+            gwtDevice.setLastEventOn(lastEvent.getReceivedOn());
+
+        }
+
         // Device connection
-        KapuaLocator locator = KapuaLocator.getInstance();
-        DeviceConnectionService deviceConnectionService = locator.getService(DeviceConnectionService.class);
-        DeviceConnectionFactory deviceConnectionFactory = locator.getFactory(DeviceConnectionFactory.class);
-
-        DeviceConnectionQuery query = deviceConnectionFactory.newQuery(device.getScopeId());
-        KapuaAndPredicate andPredicate = new AndPredicate();
-        andPredicate = andPredicate.and(new AttributePredicate<String>(DeviceConnectionPredicates.CLIENT_ID, device.getClientId()));
-        // andPredicate = andPredicate.and(new AttributePredicate<DeviceConnectionStatus[]>(DeviceConnectionPredicates.CONNECTION_STATUS,
-        // new DeviceConnectionStatus[] { DeviceConnectionStatus.CONNECTED, DeviceConnectionStatus.MISSING }));
-
-        query.setPredicate(andPredicate);
-
-        KapuaListResult<DeviceConnection> deviceConnections = deviceConnectionService.query(query);
-
-        if (!deviceConnections.isEmpty()) {
-            DeviceConnection connection = deviceConnections.getItem(0);
+        if (device.getConnection() != null) {
+            DeviceConnection connection = device.getConnection();
 
             gwtDevice.setGwtDeviceConnectionStatus(connection.getStatus().toString());
             gwtDevice.setConnectionIp(connection.getClientIp());
