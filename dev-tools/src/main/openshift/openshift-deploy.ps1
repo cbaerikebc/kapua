@@ -12,7 +12,7 @@ Param(
   [bool]$CleanProject = $false
 )
 
-$DockerSource = "hekonsek"
+$DockerSource = "redhatiot"
 # $ElasticSearchMemory= "512M"
 $SqlPod = ""
 
@@ -20,30 +20,39 @@ oc project $ProjectName
 
 if ($CleanProject){
   # Clean out the project to make room for a new deploy
-  oc delete all --all
+  oc delete route kapua-console -n $ProjectName
+  oc delete dc kapua-console -n $ProjectName
+  oc delete dc kapua-api -n $ProjectName
+  oc delete dc kapua-broker -n $ProjectName
+  oc delete dc sql -n $ProjectName
+  oc delete service kapua-console -n $ProjectName
+  oc delete service kapua-api -n $ProjectName
+  oc delete service kapua-broker -n $ProjectName
+  oc delete service sql -n $ProjectName
+  # Wait until all pods are gone
   sleep 30
 }
 
 # Deploy Database
 echo "Deploying Database"
 oc new-app $DockerSource/kapua-sql --name=sql -n $ProjectName
-# TODO: use persistent storage
-echo "Initializing Database"
 While ("" -eq $SqlPod){
   # Wait until the pod is created and running
-  echo "Waiting for pod to start"
+  echo "Waiting for pod to start."
   sleep 10
-  $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*.*Running" -List | %{$_.Matches} | %{$_.Value}
+  $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*.*1/1.*Running" -List | %{$_.Matches} | %{$_.Value}
 }
+echo "Waiting for the pod to deploy the database."
 sleep 30
 $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
-echo "Using SQL pod: $SqlPod"
+echo "Initializing database. Using SQL pod: $SqlPod"
+# TODO: use persistent storage
 oc exec $SqlPod -i -- curl $DBUrl -o /tmp/db.sql
 oc exec $SqlPod -i -- sh -c 'java -cp /opt/h2/bin/h2*.jar org.h2.tools.RunScript -url jdbc:h2:tcp://localhost:3306/kapuadb -user kapua -password kapua -script /tmp/db.sql'
 
 # Deploy Broker
 echo "Deploying Kapua Broker"
-oc new-app $DockerSource/kapua-broker:latest -name=kapua-broker -n $ProjectName
+oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName
 
 # Deploy API
 echo "Deploying Kapua API"
