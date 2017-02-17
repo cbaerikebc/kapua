@@ -8,38 +8,48 @@
 
 Param(
   [string]$ProjectName = $(Read-Host "Project name"),
-  [string]$DBUrl =  $(Read-Host "DB Init file URL"),
+#  [string]$DBUrl =  $(Read-Host "DB Init file URL"),
   [bool]$CleanProject = $false
 )
 
 $DockerSource = "redhatiot"
+$DBUrl = "https://raw.githubusercontent.com/eclipse/kapua/develop/dev-tools/src/main/database/liquibase.sql"
 # $ElasticSearchMemory= "512M"
-$SqlPod = ""
 
 oc project $ProjectName
 
 if ($CleanProject){
   # Clean out the project to make room for a new deploy
+  oc delete route kapua-broker -n $ProjectName
   oc delete route kapua-console -n $ProjectName
+  oc delete route kapua-api -n $ProjectName
   oc delete dc kapua-console -n $ProjectName
   oc delete dc kapua-api -n $ProjectName
   oc delete dc kapua-broker -n $ProjectName
   oc delete dc sql -n $ProjectName
+#  oc delete dc kapua-liquibase -n $ProjectName
   oc delete service kapua-console -n $ProjectName
   oc delete service kapua-api -n $ProjectName
   oc delete service kapua-broker -n $ProjectName
   oc delete service sql -n $ProjectName
+  oc delete is kapua-console -n $ProjectName
+  oc delete is kapua-api -n $ProjectName
+  oc delete is kapua-broker -n $ProjectName
+  oc delete is sql -n $ProjectName
+#  oc delete is kapua-liquibase -n $ProjectName
   # Wait until all pods are gone
-  sleep 30
+  sleep 60
 }
 
 # Deploy Database
 echo "Deploying Database"
-oc new-app $DockerSource/kapua-sql --name=sql -n $ProjectName
+oc new-app $DockerSource/kapua-sql:latest --name=sql -n $ProjectName
+oc set probe dc/sql --readiness --initial-delay-seconds=15 --open-tcp=3306
+$SqlPod = ""
 While ("" -eq $SqlPod){
   # Wait until the pod is created and running
   echo "Waiting for pod to start."
-  sleep 10
+  sleep 15
   $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*.*1/1.*Running" -List | %{$_.Matches} | %{$_.Value}
 }
 echo "Waiting for the pod to deploy the database."
@@ -49,22 +59,32 @@ echo "Initializing database. Using SQL pod: $SqlPod"
 # TODO: use persistent storage
 oc exec $SqlPod -i -- curl $DBUrl -o /tmp/db.sql
 oc exec $SqlPod -i -- sh -c 'java -cp /opt/h2/bin/h2*.jar org.h2.tools.RunScript -url jdbc:h2:tcp://localhost:3306/kapuadb -user kapua -password kapua -script /tmp/db.sql'
+#oc new-app $DockerSource/kapua-liquibase:latest --name=kapua-liquibase -n $ProjectName
 
 # Deploy Broker
 echo "Deploying Kapua Broker"
-oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName
-
-# Deploy API
-echo "Deploying Kapua API"
-oc new-app $DockerSource/kapua-api:latest -n $ProjectName
+oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName '-eACTIVEMQ_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema='
+oc create route edge kapua-broker --service=kapua-broker --insecure-policy='Redirect'
+oc set probe dc/kapua-broker -n $ProjectName --readiness --initial-delay-seconds=15 --open-tcp=1883
 
 # Deploy Console
 echo "Deploying Kapua Console"
-oc new-app $DockerSource/kapua-console:latest -n $ProjectName -e COMMONS_DB_SCHEMA=' '
-oc create route edge kapua-console --service=kapua-console --insecure-policy='Redirect'
+oc new-app $DockerSource/kapua-console:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema= -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
+oc create route edge kapua-console --path=/console --service=kapua-console --insecure-policy='Redirect'
+oc set probe dc/kapua-console -n $ProjectName --readiness --liveness --initial-delay-seconds=60 --request-timeout=10 --get-url=http://:8080/console
+
+# Deploy API
+echo "Deploying Kapua API"
+oc new-app $DockerSource/kapua-api:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema= -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
+oc create route edge kapua-api --path=/api --service=kapua-api --insecure-policy='Redirect'
+oc set probe dc/kapua-api -n $ProjectName --readiness --liveness --initial-delay-seconds=60 --request-timeout=10 --get-url=http://:8080/api
 
 # Deploy Elastic Search
 # echo "Deploying Elastic Search"
 # oc new-app -e ES_JAVA_OPTS="-Xms$ElasticSearchMemory -Xmx$ElasticSearchMemory" elasticsearch:2.4 -n $ProjectName
 
 
+# Cleanup:
+sleep 120
+# Liquibase is only needed for DB initalization. No need to keep it running afterwards.
+#oc delete dc kapua-liquibase
