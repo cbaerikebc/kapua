@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2016 Eurotech and/or its affiliates and others
+ * Copyright (c) 2011, 2017 Eurotech and/or its affiliates and others
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -8,11 +8,13 @@
  *
  * Contributors:
  *     Eurotech - initial API and implementation
+ *     Red Hat Inc
  *
  *******************************************************************************/
 package org.eclipse.kapua.service.account.internal;
 
 import java.util.List;
+import java.util.Objects;
 
 import javax.persistence.TypedQuery;
 
@@ -133,13 +135,13 @@ public class AccountServiceImpl extends AbstractKapuaConfigurableService impleme
 
             //
             // Verify unchanged parent account ID and parent account path
-            if (!oldAccount.getScopeId().equals(account.getScopeId())) {
+            if (!Objects.equals(oldAccount.getScopeId(), account.getScopeId())) {
                 throw new KapuaAccountException(KapuaAccountErrorCodes.ILLEGAL_ARGUMENT, null, "scopeId");
             }
-            if (oldAccount.getParentAccountPath().compareTo(account.getParentAccountPath()) != 0) {
+            if (!oldAccount.getParentAccountPath().equals(account.getParentAccountPath())) {
                 throw new KapuaAccountException(KapuaAccountErrorCodes.ILLEGAL_ARGUMENT, null, "parentAccountPath");
             }
-            if (oldAccount.getName().compareTo(account.getName()) != 0) {
+            if (!oldAccount.getName().equals(account.getName())) {
                 throw new KapuaAccountException(KapuaAccountErrorCodes.ILLEGAL_ARGUMENT, null, "accountName");
             }
 

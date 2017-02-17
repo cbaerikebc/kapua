@@ -7,10 +7,9 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Eurotech - initial API and implementation
- *
+ * Eurotech - initial API and implementation
  *******************************************************************************/
-package org.eclipse.kapua.app.console.client.user;
+package org.eclipse.kapua.app.console.client.user.dialog;
 
 import org.eclipse.kapua.app.console.client.messages.ConsoleMessages;
 import org.eclipse.kapua.app.console.client.util.ConfirmPasswordFieldValidator;
@@ -23,9 +22,9 @@ import org.eclipse.kapua.app.console.client.util.PasswordFieldValidator;
 import org.eclipse.kapua.app.console.client.util.TextFieldValidator;
 import org.eclipse.kapua.app.console.client.util.TextFieldValidator.FieldType;
 import org.eclipse.kapua.app.console.shared.model.GwtSession;
-import org.eclipse.kapua.app.console.shared.model.GwtUser;
-import org.eclipse.kapua.app.console.shared.model.GwtUser.GwtUserStatus;
 import org.eclipse.kapua.app.console.shared.model.GwtXSRFToken;
+import org.eclipse.kapua.app.console.shared.model.user.GwtUser;
+import org.eclipse.kapua.app.console.shared.model.user.GwtUser.GwtUserStatus;
 import org.eclipse.kapua.app.console.shared.service.GwtSecurityTokenService;
 import org.eclipse.kapua.app.console.shared.service.GwtSecurityTokenServiceAsync;
 import org.eclipse.kapua.app.console.shared.service.GwtUserService;
@@ -103,7 +102,7 @@ public class UserForm extends Window {
 
     /**
      * No new user is allowed for this form. Only the UserManagerForm can create a new user form using this as super constructor
-     * 
+     *
      * @param accountId
      */
     protected UserForm(String accountId) {
