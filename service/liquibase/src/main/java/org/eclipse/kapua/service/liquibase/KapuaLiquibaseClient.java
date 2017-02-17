@@ -18,16 +18,14 @@ import java.io.StringWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
 
 public class KapuaLiquibaseClient {
 
-    String jdbcUrl;
+    private final String jdbcUrl;
 
-    String username;
+    private final String username;
 
-    String password;
+    private final String password;
 
     public KapuaLiquibaseClient(String jdbcUrl, String username, String password) {
         this.jdbcUrl = jdbcUrl;
@@ -35,13 +33,11 @@ public class KapuaLiquibaseClient {
         this.password = password;
     }
 
-    public List<String> update() {
+    public void update() {
         try {
             Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
             Liquibase liquibase = new Liquibase("liquibase.sql", new ClassLoaderResourceAccessor(), new JdbcConnection(connection));
-            StringWriter output = new StringWriter();
-            liquibase.update("", output);
-            return Arrays.asList(output.toString().split("\n"));
+            liquibase.update(null);
         } catch (LiquibaseException | SQLException e) {
             throw new RuntimeException(e);
         }
