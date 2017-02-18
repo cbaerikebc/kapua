@@ -8,20 +8,26 @@
  *
  * Contributors:
  *     Eurotech - initial API and implementation
- *
  *******************************************************************************/
-package org.eclipse.kapua.service.account.internal;
+package org.eclipse.kapua.commons.configuration;
 
-import org.eclipse.kapua.commons.model.query.KapuaListResultImpl;
-import org.eclipse.kapua.service.account.Account;
-import org.eclipse.kapua.service.account.AccountListResult;
+import org.eclipse.kapua.commons.configuration.metatype.Password;
+import org.junit.Test;
 
-/**
- * Account list result implementation.
- *
- * @since 1.0
- */
-public class AccountListResultImpl extends KapuaListResultImpl<Account> implements AccountListResult {
+import static org.assertj.core.api.Assertions.assertThat;
 
-    private static final long serialVersionUID = -5118004898345748297L;
+public class StringUtilTest {
+
+    @Test
+    public void shouldConvertPasswordsArrayToString() {
+        // Given
+        Password[] passwords = new Password[] {new Password("foo") };
+
+        // When
+        String passwordsString = StringUtil.valueToString(passwords);
+
+        // Then
+        assertThat(passwordsString).isEqualTo("foo");
+    }
+
 }
