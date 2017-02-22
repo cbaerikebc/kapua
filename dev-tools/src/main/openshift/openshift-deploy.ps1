@@ -52,11 +52,17 @@ While ("" -eq $SqlPod){
   sleep 15
   $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*.*1/1.*Running" -List | %{$_.Matches} | %{$_.Value}
 }
-echo "Waiting for the pod to deploy the database."
+echo "Waiting for the pod to deploy the database engine."
+sleep 30
+$SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
+echo "Adding persistent volumes. Using SQL pod: $SqlPod"
+$Pvc = oc get pvc | Select-String -Pattern "kapua-sql-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
+oc volume dc/sql --remove --name=sql-volume-1
+oc volume dc/sql --add --name=sql-pv-1 --type=persistentVolumeClaim --claim-name=$Pvc --mount-path=/opt/h2-data
+echo "Waiting for the pod to redeploy after adding persistent volumes."
 sleep 30
 $SqlPod = oc get pods | Select-String -Pattern "sql-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
 echo "Initializing database. Using SQL pod: $SqlPod"
-# TODO: use persistent storage
 oc exec $SqlPod -i -- curl $DBUrl -o /tmp/db.sql
 oc exec $SqlPod -i -- sh -c 'java -cp /opt/h2/bin/h2*.jar org.h2.tools.RunScript -url jdbc:h2:tcp://localhost:3306/kapuadb -user kapua -password kapua -script /tmp/db.sql'
 #oc new-app $DockerSource/kapua-liquibase:latest --name=kapua-liquibase -n $ProjectName
