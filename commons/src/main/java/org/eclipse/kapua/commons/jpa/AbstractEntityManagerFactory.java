@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2016 Eurotech and/or its affiliates and others
+ * Copyright (c) 2011, 2017 Eurotech and/or its affiliates and others
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -12,37 +12,31 @@
  *******************************************************************************/
 package org.eclipse.kapua.commons.jpa;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
-
 import org.eclipse.kapua.KapuaException;
 import org.eclipse.kapua.commons.setting.system.SystemSetting;
 import org.eclipse.kapua.commons.setting.system.SystemSettingKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static org.eclipse.kapua.commons.jpa.JdbcConnectionUrlResolvers.resolveJdbcUrl;
+
 /**
  * Utility class for JPA operations.
  * 
- * @since 1.0
- * 
+ * @since 1.0.0
  */
-public abstract class AbstractEntityManagerFactory implements org.eclipse.kapua.commons.jpa.EntityManagerFactory
-{
+public abstract class AbstractEntityManagerFactory implements org.eclipse.kapua.commons.jpa.EntityManagerFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractEntityManagerFactory.class);
 
     private static final Map<String, String> s_uniqueConstraints = new HashMap<>();
     private EntityManagerFactory entityManagerFactory;
-
-    /**
-     * Jdbc url connection resolver service
-     */
-    private final JdbcConnectionUrlResolver jdbcConnectionUrlResolver;
 
     /**
      * Protected constructor
@@ -51,20 +45,8 @@ public abstract class AbstractEntityManagerFactory implements org.eclipse.kapua.
      * @param datasourceName
      * @param uniqueConstraints
      */
-    protected AbstractEntityManagerFactory(String persistenceUnitName,
-            String datasourceName,
-            Map<String, String> uniqueConstraints) {
+    protected AbstractEntityManagerFactory(String persistenceUnitName, String datasourceName, Map<String, String> uniqueConstraints) {
         SystemSetting config = SystemSetting.getInstance();
-
-        String connectionUrlResolverType = config.getString(SystemSettingKey.DB_JDBC_CONNECTION_URL_RESOLVER, "DEFAULT");
-        LOG.debug("The following JDBC connection URL resolver type will be used: {}", connectionUrlResolverType);
-        if (connectionUrlResolverType.equals("DEFAULT")) {
-            jdbcConnectionUrlResolver = new DefaultConfigurableJdbcConnectionUrlResolver();
-        } else if (connectionUrlResolverType.equals("H2")) {
-            jdbcConnectionUrlResolver = new H2JdbcConnectionUrlResolver();
-        } else {
-            throw new IllegalArgumentException("Unknown JDBC connection URL resolver type: " + connectionUrlResolverType);
-        }
 
         //
         // Initialize the EntityManagerFactory
@@ -75,7 +57,7 @@ public abstract class AbstractEntityManagerFactory implements org.eclipse.kapua.
 
             configOverrides.put("eclipselink.cache.shared.default", "false"); // This has to be set to false in order to disable the local object cache of EclipseLink.
 
-            configOverrides.put("eclipselink.connection-pool.default.url", jdbcConnectionUrlResolver.connectionUrl());
+            configOverrides.put("eclipselink.connection-pool.default.url", resolveJdbcUrl());
             configOverrides.put("eclipselink.connection-pool.default.user", config.getString(SystemSettingKey.DB_USERNAME));
             configOverrides.put("eclipselink.connection-pool.default.password", config.getString(SystemSettingKey.DB_PASSWORD));
 
@@ -86,8 +68,7 @@ public abstract class AbstractEntityManagerFactory implements org.eclipse.kapua.
             configOverrides.put("eclipselink.connection-pool.default.wait", config.getString(SystemSettingKey.DB_POOL_BORROW_TIMEOUT));
 
             // Standalone JPA
-            entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName,
-                    configOverrides);
+            entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName, configOverrides);
         } catch (Throwable ex) {
             LOG.error("Error creating EntityManagerFactory", ex);
             throw new ExceptionInInitializerError(ex);
