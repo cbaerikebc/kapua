@@ -30,13 +30,13 @@ public class KapuaSession implements Serializable {
 
     public final static String KAPUA_SESSION_KEY = "KapuaSession";
 
-    private static List<String> trustedClasses = new ArrayList<String>();
+    private static final List<String> trustedClasses = new ArrayList<>();
     private static final String TRUST_CLASS_METHOD_PATTERN = "{0}.{1}";
 
     // TODO to be moved inside configuration service or something like that "fully.qualified.classname.methodname" (<init> for the constructor)
     static {
         trustedClasses.add("org.eclipse.kapua.broker.core.plugin.KapuaSecurityContext.<init>");
-        trustedClasses.add("org.eclipse.kapua.commons.security.KapuaSecurityUtils.doPriviledge");
+        trustedClasses.add("org.eclipse.kapua.commons.security.KapuaSecurityUtils.doPrivileged");
     }
 
     /**
