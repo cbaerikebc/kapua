@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2011, 2016 Eurotech and/or its affiliates and others
+ * Copyright (c) 2011, 2017 Eurotech and/or its affiliates and others
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
@@ -7,7 +7,8 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- * Eurotech - initial API and implementation
+ *   Eurotech - initial API and implementation
+ *   Red Hat Inc
  *******************************************************************************/
 package org.eclipse.kapua.commons.security;
 
@@ -26,7 +27,7 @@ public class KapuaSecurityUtils {
 
     private static Logger logger = LoggerFactory.getLogger(KapuaSecurityUtils.class);
 
-    public static String MDC_USER_ID = "userId";
+    public static final String MDC_USER_ID = "userId";
 
     private static final ThreadLocal<KapuaSession> threadSession = new ThreadLocal<>();
 
@@ -65,7 +66,7 @@ public class KapuaSecurityUtils {
      * @throws KapuaException
      * @since 1.0.0
      */
-    public static <T> T doPriviledge(Callable<T> privilegedAction)
+    public static <T> T doPrivileged(Callable<T> privilegedAction)
             throws KapuaException {
         T result = null;
 

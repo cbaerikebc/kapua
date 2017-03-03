@@ -28,7 +28,7 @@
         <commons.pool.version>2.3</commons.pool.version>
 
 		<docker.account>kapua</docker.account>
-		<java.base.image>java:8u111</java.base.image>
+		<java.base.image>openjdk:8u111-jre-alpine</java.base.image>
     </properties>
 
 	<dependencies>
@@ -89,6 +89,10 @@
 		<dependency>
 			<groupId>org.eclipse.kapua</groupId>
 			<artifactId>kapua-security-shiro</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.eclipse.kapua</groupId>
+			<artifactId>kapua-liquibase</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.eclipse.kapua</groupId>
@@ -209,7 +213,41 @@
 		<dependency>
 			<groupId>io.dropwizard.metrics</groupId>
 			<artifactId>metrics-core</artifactId>
-			<version>3.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.reflections</groupId>
+			<artifactId>reflections</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.javassist</groupId>
+			<artifactId>javassist</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.findbugs</groupId>
+			<artifactId>annotations</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.liquibase</groupId>
+			<artifactId>liquibase-core</artifactId>
+			<version>${liquibase.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.yaml</groupId>
+			<artifactId>snakeyaml</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.jolokia</groupId>
+			<artifactId>jolokia-jvm</artifactId>
+			<version>1.3.4</version>
+			<classifier>agent</classifier>
 		</dependency>
 	</dependencies>
 
@@ -447,6 +485,62 @@
 									<overWrite>true</overWrite>
 									<outputDirectory>target/broker_dependency</outputDirectory>
 								</artifactItem>
+								<artifactItem>
+									<groupId>org.reflections</groupId>
+									<artifactId>reflections</artifactId>
+									<version>${reflections.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.javassist</groupId>
+									<artifactId>javassist</artifactId>
+									<version>${javassist.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>com.google.code.findbugs</groupId>
+									<artifactId>annotations</artifactId>
+									<version>${findbugs.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>commons-io</groupId>
+									<artifactId>commons-io</artifactId>
+									<version>${commons-io.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.apache.commons</groupId>
+									<artifactId>commons-lang3</artifactId>
+									<version>${commons-lang.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.liquibase</groupId>
+									<artifactId>liquibase-core</artifactId>
+									<version>${liquibase.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
+								<artifactItem>
+									<groupId>org.yaml</groupId>
+									<artifactId>snakeyaml</artifactId>
+									<version>${snakeyaml.version}</version>
+									<type>jar</type>
+									<overWrite>true</overWrite>
+									<outputDirectory>target/broker_dependency</outputDirectory>
+								</artifactItem>
 							</artifactItems>
 						</configuration>
 					</execution>
@@ -458,22 +552,44 @@
 				<configuration>
 					<images>
 						<image>
-							<name>${docker.account}/kapua-broker</name>
+							<name>${docker.account}/java-base</name>
 							<build>
 								<from>${java.base.image}</from>
+								<runCmds>
+									<runCmd>adduser -D -g "Eclipse Kapua" kapua</runCmd>
+								</runCmds>
+							</build>
+						</image>
+						<image>
+							<name>${docker.account}/kapua-broker</name>
+							<build>
+								<from>${docker.account}/java-base</from>
 								<assembly>
 									<descriptor>/src/main/descriptors/kapua-broker.xml</descriptor>
 								</assembly>
 								<entryPoint>
-									<shell>/maven/bin/activemq console</shell>
+									<exec>
+										<arg>/maven/bin/activemq</arg>
+										<arg>console</arg>
+									</exec>
 								</entryPoint>
 								<env>
+									<JAVA_OPTS>-javaagent:/maven/jolokia-jvm-agent.jar</JAVA_OPTS>
 									<ACTIVEMQ_OPTS>-Dcommons.db.connection.host=\${DB_PORT_3306_TCP_ADDR} -Dcommons.db.connection.port=\${DB_PORT_3306_TCP_PORT} -Dcommons.db.schema=</ACTIVEMQ_OPTS>
 								</env>
 								<ports>
 									<port>1883</port>
+									<port>8778</port><!-- Jolokia -->
 									<port>61614</port>
 								</ports>
+								<user>kapua</user>
+								<runCmds>
+									<run><![CDATA[
+									chown -R kapua:kapua /maven && \
+									chmod -R a+rw /maven && \
+									find /maven -type d -exec chmod a+x {} +
+									]]></run>
+								</runCmds>
 								<volumes>
 									<volume>/maven/data</volume>
 								</volumes>
@@ -482,46 +598,62 @@
 						<image>
 							<name>${docker.account}/kapua-console</name>
 							<build>
-								<from>${java.base.image}</from>
+								<from>${docker.account}/java-base</from>
 								<assembly>
 									<descriptor>/src/main/descriptors/kapua-console.xml</descriptor>
 								</assembly>
 								<entryPoint>
-									<shell>/maven/bin/catalina.sh run</shell>
+									<exec>
+										<arg>/maven/bin/catalina.sh</arg>
+										<arg>run</arg>
+									</exec>
 								</entryPoint>
 								<env>
+									<JAVA_OPTS>-javaagent:/maven/jolokia-jvm-agent.jar</JAVA_OPTS>
 									<CATALINA_OPTS>-Dcommons.db.connection.host=\${DB_PORT_3306_TCP_ADDR} -Dcommons.db.connection.port=\${DB_PORT_3306_TCP_PORT} -Dcommons.db.schema=</CATALINA_OPTS>
 								</env>
 								<ports>
 									<port>8080</port>
+									<port>8778</port><!-- Jolokia -->
 								</ports>
+								<user>kapua</user>
 								<runCmds>
-									<run>chgrp -R 0 /maven</run>
-									<run>chmod -R g+rw /maven</run>
-									<run>find /maven -type d -exec chmod g+x {} +</run>
+									<run><![CDATA[
+									chown -R kapua:kapua /maven && \
+									chmod -R a+rw /maven && \
+									find /maven -type d -exec chmod a+x {} +
+									]]></run>
 								</runCmds>
 							</build>
 						</image>
 						<image>
 							<name>${docker.account}/kapua-api</name>
 							<build>
-								<from>${java.base.image}</from>
+								<from>${docker.account}/java-base</from>
 								<assembly>
 									<descriptor>/src/main/descriptors/kapua-api.xml</descriptor>
 								</assembly>
 								<entryPoint>
-									<shell>/maven/bin/catalina.sh run</shell>
+									<exec>
+										<arg>/maven/bin/catalina.sh</arg>
+										<arg>run</arg>
+									</exec>
 								</entryPoint>
 								<env>
+									<JAVA_OPTS>-javaagent:/maven/jolokia-jvm-agent.jar</JAVA_OPTS>
 									<CATALINA_OPTS>-Dcommons.db.connection.host=\${DB_PORT_3306_TCP_ADDR} -Dcommons.db.connection.port=\${DB_PORT_3306_TCP_PORT} -Dcommons.db.schema=</CATALINA_OPTS>
 								</env>
 								<ports>
 									<port>8080</port>
+									<port>8778</port><!-- Jolokia -->
 								</ports>
+								<user>kapua</user>
 								<runCmds>
-									<run>chgrp -R 0 /maven</run>
-									<run>chmod -R g+rw /maven</run>
-									<run>find /maven -type d -exec chmod g+x {} +</run>
+									<run><![CDATA[
+									chown -R kapua:kapua /maven && \
+									chmod -R a+rw /maven && \
+									find /maven -type d -exec chmod a+x {} +
+									]]></run>
 								</runCmds>
 							</build>
 						</image>
@@ -529,12 +661,6 @@
 							<name>${docker.account}/kapua-sql</name>
 							<build>
 								<dockerFileDir>sql</dockerFileDir>
-							</build>
-						</image>
-						<image>
-							<name>${docker.account}/kapua-liquibase</name>
-							<build>
-								<dockerFileDir>${project.parent.basedir}/dev-tools/src/main/database</dockerFileDir>
 							</build>
 						</image>
 					</images>
