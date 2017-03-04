@@ -61,6 +61,12 @@ sleep 30
 # Deploy Broker
 echo "Deploying Kapua Broker"
 oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName '-eACTIVEMQ_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema='
+sleep 30
+$BrokerPod = oc get pods | Select-String -Pattern "kapua-broker-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
+echo "Adding persistent volumes. Using Broker pod: $BrokerPod"
+$Pvc = oc get pvc | Select-String -Pattern "kapua-broker-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
+oc volume dc/kapua-broker --remove --name=kapua-broker-volume-1
+oc volume dc/kapua-broker --add --name=kapua-broker-volume-1 --type=persistentVolumeClaim --claim-name=$Pvc --mount-path=/maven/data
 oc create route edge kapua-broker --service=kapua-broker --port=61614 --insecure-policy='Redirect'
 oc set probe dc/kapua-broker -n $ProjectName --readiness --initial-delay-seconds=120 --open-tcp=1883
 
@@ -79,4 +85,3 @@ oc set probe dc/kapua-api -n $ProjectName --readiness --liveness --initial-delay
 # Deploy Elastic Search
 # echo "Deploying Elastic Search"
 # oc new-app -e ES_JAVA_OPTS="-Xms$ElasticSearchMemory -Xmx$ElasticSearchMemory" elasticsearch:2.4 -n $ProjectName
-
