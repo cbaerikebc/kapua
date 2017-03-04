@@ -1,17 +1,20 @@
 ###############################################################################
 #
-# BCGOV - OpenShift S2I deployment of Eclipse Kapua
+# BCGOV - OpenShift deployment of Eclipse Kapua
 # 
-# Note: This script assumes that "oc login" has been run
+# Note: This script assumes that "oc login" has been run.
+#       It also requires 2 persistent volume claims named:
+#       1) kapua-sql-* for the H2 database
+#       2) kapua-broker-* for the ActiveMQ database
 # 
 ###############################################################################
 
 Param(
   [string]$ProjectName = $(Read-Host "Project name"),
+  [string]$DockerSource = "ctron",
   [bool]$CleanProject = $false
 )
 
-$DockerSource = "ctron"
 # $ElasticSearchMemory= "512M"
 
 oc project $ProjectName
