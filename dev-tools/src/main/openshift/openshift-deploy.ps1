@@ -63,7 +63,7 @@ sleep 30
 
 # Deploy Broker
 echo "Deploying Kapua Broker"
-oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName '-eACTIVEMQ_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema='
+oc new-app $DockerSource/kapua-broker:latest --name=kapua-broker -n $ProjectName '-eACTIVEMQ_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP'
 sleep 30
 $BrokerPod = oc get pods | Select-String -Pattern "kapua-broker-[^ ]*" -List | %{$_.Matches} | %{$_.Value}
 echo "Adding persistent volumes. Using Broker pod: $BrokerPod"
@@ -75,13 +75,13 @@ oc set probe dc/kapua-broker -n $ProjectName --readiness --initial-delay-seconds
 
 # Deploy Console
 echo "Deploying Kapua Console"
-oc new-app $DockerSource/kapua-console:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema= -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
+oc new-app $DockerSource/kapua-console:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
 oc create route edge kapua-console --path=/console --service=kapua-console --insecure-policy='Redirect'
 oc set probe dc/kapua-console -n $ProjectName --readiness --liveness --initial-delay-seconds=120 --request-timeout=10 --get-url=http://:8080/console
 
 # Deploy API
 echo "Deploying Kapua API"
-oc new-app $DockerSource/kapua-api:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dcommons.db.schema= -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
+oc new-app $DockerSource/kapua-api:latest -n $ProjectName '-eCATALINA_OPTS=-Dcommons.db.connection.host=$SQL_SERVICE_HOST -Dcommons.db.connection.port=$SQL_SERVICE_PORT_3306_TCP -Dbroker.host=$KAPUA_BROKER_SERVICE_HOST'
 oc create route edge kapua-api --path=/api --service=kapua-api --insecure-policy='Redirect'
 oc set probe dc/kapua-api -n $ProjectName --readiness --liveness --initial-delay-seconds=120 --request-timeout=10 --get-url=http://:8080/api
 
